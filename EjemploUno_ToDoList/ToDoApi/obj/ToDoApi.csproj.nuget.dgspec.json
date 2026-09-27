@@ -1,20 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\HP\\Documents\\Desarrollo IV\\ejemplouno_todolist\\ToDoApi\\ToDoApi.csproj": {}
+    "C:\\Users\\arlin\\OneDrive\\Documentos\\Visual Studio 2022\\ProyectoDesarrolloToDoList\\EjemploUno_ToDoList\\ToDoApi\\ToDoApi.csproj": {}
   },
   "projects": {
-    "C:\\Users\\HP\\Documents\\Desarrollo IV\\ejemplouno_todolist\\ToDoApi\\ToDoApi.csproj": {
+    "C:\\Users\\arlin\\OneDrive\\Documentos\\Visual Studio 2022\\ProyectoDesarrolloToDoList\\EjemploUno_ToDoList\\ToDoApi\\ToDoApi.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\HP\\Documents\\Desarrollo IV\\ejemplouno_todolist\\ToDoApi\\ToDoApi.csproj",
+        "projectUniqueName": "C:\\Users\\arlin\\OneDrive\\Documentos\\Visual Studio 2022\\ProyectoDesarrolloToDoList\\EjemploUno_ToDoList\\ToDoApi\\ToDoApi.csproj",
         "projectName": "ToDoApi",
-        "projectPath": "C:\\Users\\HP\\Documents\\Desarrollo IV\\ejemplouno_todolist\\ToDoApi\\ToDoApi.csproj",
-        "packagesPath": "C:\\Users\\HP\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\HP\\Documents\\Desarrollo IV\\ejemplouno_todolist\\ToDoApi\\obj\\",
+        "projectPath": "C:\\Users\\arlin\\OneDrive\\Documentos\\Visual Studio 2022\\ProyectoDesarrolloToDoList\\EjemploUno_ToDoList\\ToDoApi\\ToDoApi.csproj",
+        "packagesPath": "C:\\Users\\arlin\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\arlin\\OneDrive\\Documentos\\Visual Studio 2022\\ProyectoDesarrolloToDoList\\EjemploUno_ToDoList\\ToDoApi\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\HP\\AppData\\Roaming\\NuGet\\NuGet.Config"
+          "C:\\Users\\arlin\\AppData\\Roaming\\NuGet\\NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net10.0"
@@ -98,7 +98,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.401/PortableRuntimeIdentifierGraph.json",
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.400/PortableRuntimeIdentifierGraph.json",
           "packagesToPrune": {
             "Microsoft.AspNetCore": "(,10.0.32767]",
             "Microsoft.AspNetCore.Antiforgery": "(,10.0.32767]",
