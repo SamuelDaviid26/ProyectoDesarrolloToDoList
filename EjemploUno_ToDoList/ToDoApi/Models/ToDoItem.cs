@@ -22,6 +22,8 @@ public DateTime CreatedAt {get;set;} = DateTime.Now;
 
 public DateTime? CompletedAt {get;set;}
 
+public string? UserId { get; set; }
+
 public int? CategoryId {get;set;}
 public Category? Category {get;set;}
 

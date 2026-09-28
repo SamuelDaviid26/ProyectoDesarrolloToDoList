@@ -4,6 +4,7 @@ using ToDoApi.Data;
 using ToDoApi.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace ToDoApi.Controllers
 {
@@ -19,10 +20,19 @@ namespace ToDoApi.Controllers
             _context = context;
         }
 
+        private string? GetCurrentUserId()
+        {
+            return User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+        }
+
         [HttpGet("{id}")]
         public async Task<ActionResult<ToDoItem>> GetToDoItem(int id)
         {
-            var todoItem = await _context.ToDoItems.FindAsync(id);
+            var currentUserId = GetCurrentUserId();
+            if (string.IsNullOrWhiteSpace(currentUserId)) return Unauthorized();
+
+            var todoItem = await _context.ToDoItems
+                .FirstOrDefaultAsync(t => t.Id == id && t.UserId == currentUserId);
 
             if (todoItem == null) return NotFound();
 
@@ -32,7 +42,12 @@ namespace ToDoApi.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<ToDoItem>>> GetToDoItems([FromQuery] bool? completed)
         {
-            var query = _context.ToDoItems.AsQueryable();
+            var currentUserId = GetCurrentUserId();
+            if (string.IsNullOrWhiteSpace(currentUserId)) return Unauthorized();
+
+            var query = _context.ToDoItems
+                .Where(t => t.UserId == currentUserId)
+                .AsQueryable();
 
             if (completed.HasValue)
             {
@@ -45,6 +60,11 @@ namespace ToDoApi.Controllers
         [HttpPost]
         public async Task<ActionResult<ToDoItem>> CreateToDoItem(ToDoItem todoItem)
         {
+            var currentUserId = GetCurrentUserId();
+            if (string.IsNullOrWhiteSpace(currentUserId)) return Unauthorized();
+
+            todoItem.UserId = currentUserId;
+
             _context.ToDoItems.Add(todoItem);
             await _context.SaveChangesAsync();
 
@@ -54,7 +74,11 @@ namespace ToDoApi.Controllers
         [HttpPut("{id}")]
         public async Task<ActionResult> UpdateToDoItem(int id, ToDoItem updated)
         {
-            var todoItem = await _context.ToDoItems.FindAsync(id);
+            var currentUserId = GetCurrentUserId();
+            if (string.IsNullOrWhiteSpace(currentUserId)) return Unauthorized();
+
+            var todoItem = await _context.ToDoItems
+                .FirstOrDefaultAsync(t => t.Id == id && t.UserId == currentUserId);
 
             if (todoItem == null) return NotFound();
 
@@ -71,7 +95,11 @@ namespace ToDoApi.Controllers
         [HttpPatch("{id}/toggle")]
         public async Task<ActionResult<ToDoItem>> ToggleToDoItem(int id)
         {
-            var todoItem = await _context.ToDoItems.FindAsync(id);
+            var currentUserId = GetCurrentUserId();
+            if (string.IsNullOrWhiteSpace(currentUserId)) return Unauthorized();
+
+            var todoItem = await _context.ToDoItems
+                .FirstOrDefaultAsync(t => t.Id == id && t.UserId == currentUserId);
 
             if (todoItem == null) return NotFound();
 
@@ -86,7 +114,11 @@ namespace ToDoApi.Controllers
         [HttpDelete("{id}")]
         public async Task<ActionResult> DeleteToDoItem(int id)
         {
-            var todoItem = await _context.ToDoItems.FindAsync(id);
+            var currentUserId = GetCurrentUserId();
+            if (string.IsNullOrWhiteSpace(currentUserId)) return Unauthorized();
+
+            var todoItem = await _context.ToDoItems
+                .FirstOrDefaultAsync(t => t.Id == id && t.UserId == currentUserId);
 
             if (todoItem == null) return NotFound();
 
