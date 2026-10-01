@@ -25,6 +25,77 @@ namespace ToDoApi.Controllers
             return User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
         }
 
+        [HttpGet("stats")]
+        public async Task<ActionResult> GetStatistics()
+        {
+            var currentUserId = GetCurrentUserId();
+            if (string.IsNullOrWhiteSpace(currentUserId)) return Unauthorized();
+
+            var now = DateTime.UtcNow;
+            var tasks = await _context.ToDoItems
+                .AsNoTracking()
+                .Where(t => t.UserId == currentUserId)
+                .Select(t => new { t.Status, t.DueDate, t.CreatedAt, t.CompletedAt })
+                .ToListAsync();
+
+            var countsByStatus = tasks
+                .GroupBy(t => t.Status)
+                .ToDictionary(group => group.Key, group => group.Count());
+            var byStatus = Enum.GetValues<ToDoStatus>()
+                .ToDictionary(
+                    status => status.ToString(),
+                    status => countsByStatus.GetValueOrDefault(status));
+
+            var overdue = tasks.Count(t =>
+                t.DueDate.HasValue &&
+                t.DueDate.Value < now &&
+                t.Status != ToDoStatus.Completada &&
+                t.Status != ToDoStatus.Cancelada);
+
+            var completionDurationsInDays = tasks
+                .Where(t => t.Status == ToDoStatus.Completada && t.CompletedAt.HasValue)
+                .Select(t =>
+                {
+                    var createdAtUtc = NormalizeCreatedAtToUtc(t.CreatedAt);
+                    var completedAtUtc = NormalizeCompletedAtToUtc(t.CompletedAt!.Value);
+                    return (completedAtUtc - createdAtUtc).TotalDays;
+                })
+                .Where(durationInDays => durationInDays >= 0)
+                .ToList();
+
+            double? averageCompletionDays = completionDurationsInDays.Count == 0
+                ? null
+                : completionDurationsInDays.Average();
+
+            return Ok(new
+            {
+                total = tasks.Count,
+                byStatus,
+                overdue,
+                averageCompletionDays
+            });
+        }
+
+        private static DateTime NormalizeCreatedAtToUtc(DateTime createdAt)
+        {
+            return createdAt.Kind switch
+            {
+                DateTimeKind.Utc => createdAt,
+                DateTimeKind.Local => createdAt.ToUniversalTime(),
+                _ => TimeZoneInfo.ConvertTimeToUtc(createdAt, TimeZoneInfo.Local)
+            };
+        }
+
+        private static DateTime NormalizeCompletedAtToUtc(DateTime completedAt)
+        {
+            return completedAt.Kind switch
+            {
+                DateTimeKind.Utc => completedAt,
+                DateTimeKind.Local => completedAt.ToUniversalTime(),
+                _ => DateTime.SpecifyKind(completedAt, DateTimeKind.Utc)
+            };
+        }
+
         [HttpGet("{id}")]
         public async Task<ActionResult<ToDoItem>> GetToDoItem(int id)
         {
