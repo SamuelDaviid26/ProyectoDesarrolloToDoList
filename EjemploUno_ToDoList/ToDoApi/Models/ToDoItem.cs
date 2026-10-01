@@ -16,8 +16,6 @@ public string Title {get;set;}
 [MaxLength(1000)]
 public string Description {get;set;}
 
-public bool isCompleted {get;set;} = false;
-
 public DateTime CreatedAt {get;set;} = DateTime.Now;
 
 public DateTime? CompletedAt {get;set;}
@@ -25,6 +23,9 @@ public DateTime? CompletedAt {get;set;}
 public int? CategoryId {get;set;}
 public Category? Category {get;set;}
 
+public ToDoStatus Status {get;set;} = ToDoStatus.Pendiente;
+public DateTime? DueDate { get; set; }   
+    
     }   
 
 
