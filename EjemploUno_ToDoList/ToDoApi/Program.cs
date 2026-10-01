@@ -7,8 +7,14 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(
+            new System.Text.Json.Serialization.JsonStringEnumConverter());
+    });
+    
+    builder.Services.AddEndpointsApiExplorer();
 // builder.Services.AddSwaggerGen();
 
 builder.Services.AddDbContext<ToDoDbContext>(options =>

@@ -40,7 +40,9 @@ namespace ToDoApi.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<ToDoItem>>> GetToDoItems([FromQuery] bool? completed)
+        public async Task<ActionResult<IEnumerable<ToDoItem>>> GetToDoItems(
+            [FromQuery] ToDoStatus? status,
+            [FromQuery] bool? overdue)
         {
             var currentUserId = GetCurrentUserId();
             if (string.IsNullOrWhiteSpace(currentUserId)) return Unauthorized();
@@ -49,9 +51,20 @@ namespace ToDoApi.Controllers
                 .Where(t => t.UserId == currentUserId)
                 .AsQueryable();
 
-            if (completed.HasValue)
+            if (status.HasValue)
             {
-                query = query.Where(t => t.isCompleted == completed.Value);
+                query = query.Where(t => t.Status == status.Value);
+            }
+
+            // tareas encidas que todavía no llegaron a un estado final
+            if (overdue == true)
+            {
+                var now = DateTime.UtcNow;
+                query = query.Where(t =>
+                    t.DueDate != null &&
+                    t.DueDate < now &&
+                    t.Status != ToDoStatus.Completada &&
+                    t.Status != ToDoStatus.Cancelada);
             }
 
             return Ok(await query.ToListAsync());
@@ -64,6 +77,9 @@ namespace ToDoApi.Controllers
             if (string.IsNullOrWhiteSpace(currentUserId)) return Unauthorized();
 
             todoItem.UserId = currentUserId;
+            // Las tareas estan en pendienter cuando se crea
+            todoItem.Status = ToDoStatus.Pendiente;
+            todoItem.CompletedAt = null;
 
             _context.ToDoItems.Add(todoItem);
             await _context.SaveChangesAsync();
@@ -84,16 +100,16 @@ namespace ToDoApi.Controllers
 
             todoItem.Title = updated.Title;
             todoItem.Description = updated.Description;
-            todoItem.isCompleted = updated.isCompleted;
-            todoItem.CompletedAt = updated.isCompleted ? DateTime.Now : null;
+            todoItem.DueDate = updated.DueDate;
+
 
             await _context.SaveChangesAsync();
 
             return NoContent();
         }
 
-        [HttpPatch("{id}/toggle")]
-        public async Task<ActionResult<ToDoItem>> ToggleToDoItem(int id)
+        [HttpPatch("{id}/status")]
+        public async Task<ActionResult<ToDoItem>> ChangeStatus(int id, ChangeStatusRequest request)
         {
             var currentUserId = GetCurrentUserId();
             if (string.IsNullOrWhiteSpace(currentUserId)) return Unauthorized();
@@ -103,8 +119,21 @@ namespace ToDoApi.Controllers
 
             if (todoItem == null) return NotFound();
 
-            todoItem.isCompleted = !todoItem.isCompleted;
-            todoItem.CompletedAt = todoItem.isCompleted ? DateTime.Now : null;
+
+            // bloquear Completada si ya venció
+            if (request.Status == ToDoStatus.Completada
+                && todoItem.DueDate.HasValue
+                && todoItem.DueDate.Value < DateTime.UtcNow
+                && !request.ForzarCompletado)
+            {
+                return BadRequest(new
+                {
+                    message = "The task is overdue and cannot be completed. Set 'forceComplete' to true to complete it anyway."
+                });
+            }
+
+            todoItem.Status = request.Status;
+            todoItem.CompletedAt = request.Status == ToDoStatus.Completada ? DateTime.UtcNow : null;
 
             await _context.SaveChangesAsync();
 
