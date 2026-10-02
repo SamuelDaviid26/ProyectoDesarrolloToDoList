@@ -4,6 +4,7 @@ using ToDoApi.Data;
 using ToDoApi.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace ToDoApi.Controllers
 {
@@ -19,10 +20,90 @@ namespace ToDoApi.Controllers
             _context = context;
         }
 
+        private string? GetCurrentUserId()
+        {
+            return User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+        }
+
+        [HttpGet("stats")]
+        public async Task<ActionResult> GetStatistics()
+        {
+            var currentUserId = GetCurrentUserId();
+            if (string.IsNullOrWhiteSpace(currentUserId)) return Unauthorized();
+
+            var now = DateTime.UtcNow;
+            var tasks = await _context.ToDoItems
+                .AsNoTracking()
+                .Where(t => t.UserId == currentUserId)
+                .Select(t => new { t.Status, t.DueDate, t.CreatedAt, t.CompletedAt })
+                .ToListAsync();
+
+            var countsByStatus = tasks
+                .GroupBy(t => t.Status)
+                .ToDictionary(group => group.Key, group => group.Count());
+            var byStatus = Enum.GetValues<ToDoStatus>()
+                .ToDictionary(
+                    status => status.ToString(),
+                    status => countsByStatus.GetValueOrDefault(status));
+
+            var overdue = tasks.Count(t =>
+                t.DueDate.HasValue &&
+                t.DueDate.Value < now &&
+                t.Status != ToDoStatus.Completada &&
+                t.Status != ToDoStatus.Cancelada);
+
+            var completionDurationsInDays = tasks
+                .Where(t => t.Status == ToDoStatus.Completada && t.CompletedAt.HasValue)
+                .Select(t =>
+                {
+                    var createdAtUtc = NormalizeCreatedAtToUtc(t.CreatedAt);
+                    var completedAtUtc = NormalizeCompletedAtToUtc(t.CompletedAt!.Value);
+                    return (completedAtUtc - createdAtUtc).TotalDays;
+                })
+                .Where(durationInDays => durationInDays >= 0)
+                .ToList();
+
+            double? averageCompletionDays = completionDurationsInDays.Count == 0
+                ? null
+                : completionDurationsInDays.Average();
+
+            return Ok(new
+            {
+                total = tasks.Count,
+                byStatus,
+                overdue,
+                averageCompletionDays
+            });
+        }
+
+        private static DateTime NormalizeCreatedAtToUtc(DateTime createdAt)
+        {
+            return createdAt.Kind switch
+            {
+                DateTimeKind.Utc => createdAt,
+                DateTimeKind.Local => createdAt.ToUniversalTime(),
+                _ => TimeZoneInfo.ConvertTimeToUtc(createdAt, TimeZoneInfo.Local)
+            };
+        }
+
+        private static DateTime NormalizeCompletedAtToUtc(DateTime completedAt)
+        {
+            return completedAt.Kind switch
+            {
+                DateTimeKind.Utc => completedAt,
+                DateTimeKind.Local => completedAt.ToUniversalTime(),
+                _ => DateTime.SpecifyKind(completedAt, DateTimeKind.Utc)
+            };
+        }
+
         [HttpGet("{id}")]
         public async Task<ActionResult<ToDoItem>> GetToDoItem(int id)
         {
-            var todoItem = await _context.ToDoItems.FindAsync(id);
+            var currentUserId = GetCurrentUserId();
+            if (string.IsNullOrWhiteSpace(currentUserId)) return Unauthorized();
+
+            var todoItem = await _context.ToDoItems
+                .FirstOrDefaultAsync(t => t.Id == id && t.UserId == currentUserId);
 
             if (todoItem == null) return NotFound();
 
@@ -34,7 +115,12 @@ namespace ToDoApi.Controllers
             [FromQuery] ToDoStatus? status,
             [FromQuery] bool? overdue)
         {
-            var query = _context.ToDoItems.AsQueryable();
+            var currentUserId = GetCurrentUserId();
+            if (string.IsNullOrWhiteSpace(currentUserId)) return Unauthorized();
+
+            var query = _context.ToDoItems
+                .Where(t => t.UserId == currentUserId)
+                .AsQueryable();
 
             if (status.HasValue)
             {
@@ -58,6 +144,10 @@ namespace ToDoApi.Controllers
         [HttpPost]
         public async Task<ActionResult<ToDoItem>> CreateToDoItem(ToDoItem todoItem)
         {
+            var currentUserId = GetCurrentUserId();
+            if (string.IsNullOrWhiteSpace(currentUserId)) return Unauthorized();
+
+            todoItem.UserId = currentUserId;
             // Las tareas estan en pendienter cuando se crea
             todoItem.Status = ToDoStatus.Pendiente;
             todoItem.CompletedAt = null;
@@ -71,7 +161,11 @@ namespace ToDoApi.Controllers
         [HttpPut("{id}")]
         public async Task<ActionResult> UpdateToDoItem(int id, ToDoItem updated)
         {
-            var todoItem = await _context.ToDoItems.FindAsync(id);
+            var currentUserId = GetCurrentUserId();
+            if (string.IsNullOrWhiteSpace(currentUserId)) return Unauthorized();
+
+            var todoItem = await _context.ToDoItems
+                .FirstOrDefaultAsync(t => t.Id == id && t.UserId == currentUserId);
 
             if (todoItem == null) return NotFound();
 
@@ -88,7 +182,11 @@ namespace ToDoApi.Controllers
         [HttpPatch("{id}/status")]
         public async Task<ActionResult<ToDoItem>> ChangeStatus(int id, ChangeStatusRequest request)
         {
-            var todoItem = await _context.ToDoItems.FindAsync(id);
+            var currentUserId = GetCurrentUserId();
+            if (string.IsNullOrWhiteSpace(currentUserId)) return Unauthorized();
+
+            var todoItem = await _context.ToDoItems
+                .FirstOrDefaultAsync(t => t.Id == id && t.UserId == currentUserId);
 
             if (todoItem == null) return NotFound();
 
@@ -116,7 +214,11 @@ namespace ToDoApi.Controllers
         [HttpDelete("{id}")]
         public async Task<ActionResult> DeleteToDoItem(int id)
         {
-            var todoItem = await _context.ToDoItems.FindAsync(id);
+            var currentUserId = GetCurrentUserId();
+            if (string.IsNullOrWhiteSpace(currentUserId)) return Unauthorized();
+
+            var todoItem = await _context.ToDoItems
+                .FirstOrDefaultAsync(t => t.Id == id && t.UserId == currentUserId);
 
             if (todoItem == null) return NotFound();
 
