@@ -20,6 +20,14 @@ namespace ToDoApi.Controllers
             _context = context;
         }
 
+
+        private static readonly Dictionary<ToDoStatus, ToDoStatus[]> AllowedTransitions = new()
+        {
+            [ToDoStatus.Pendiente] = new[] { ToDoStatus.EnProgreso, ToDoStatus.Cancelada },
+            [ToDoStatus.EnProgreso] = new[] { ToDoStatus.Completada, ToDoStatus.Cancelada },
+            [ToDoStatus.Completada] = Array.Empty<ToDoStatus>(),
+            [ToDoStatus.Cancelada] = Array.Empty<ToDoStatus>()
+        };
         private string? GetCurrentUserId()
         {
             return User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
@@ -189,6 +197,15 @@ namespace ToDoApi.Controllers
                 .FirstOrDefaultAsync(t => t.Id == id && t.UserId == currentUserId);
 
             if (todoItem == null) return NotFound();
+
+            //Validar la transición de estado, con ayuda del diccionario AllowedTransitions
+            if (!AllowedTransitions[todoItem.Status].Contains(request.Status))
+            {
+                return BadRequest(new
+                {
+                    message = $"Transición no permitida: {todoItem.Status} -> {request.Status}."
+                });
+            }
 
 
             // bloquear Completada si ya venció
