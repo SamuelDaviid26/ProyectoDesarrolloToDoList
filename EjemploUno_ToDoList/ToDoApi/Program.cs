@@ -4,6 +4,10 @@ using ToDoApi.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using ToDoApi.BackgroundServices;
+using ToDoApi.Services;
+using ToDoApi.Services.Notifications;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -41,6 +45,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddAuthorization();
+
+builder.Services.TryAddSingleton(TimeProvider.System);//Reloj
+builder.Services.Configure<OverdueReviewOptions>(builder.Configuration.GetSection(OverdueReviewOptions.SectionName));//Overdue con Json
+builder.Services.AddSingleton<IOverdueTaskNotifier, FileOverdueTaskNotifier>();//Canal de aviso
+builder.Services.AddScoped<IOverdueTaskReviewService, OverdueTaskReviewService>();
+builder.Services.AddHostedService<OverdueTaskBackgroundService>();//Arranca el job con la app
+//Notas para acordarse
 
 var app = builder.Build();
 

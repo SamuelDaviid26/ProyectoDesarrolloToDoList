@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace ToDoApi.Models
 {
@@ -27,7 +28,10 @@ public Category? Category {get;set;}
 
 public ToDoStatus Status {get;set;} = ToDoStatus.Pendiente;
 public DateTime? DueDate { get; set; }   
-    
+
+[JsonIgnore]
+public DateTime? NotifiedForDueDate { get; set; }
+
     }   
 
 
